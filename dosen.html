@@ -12,13 +12,20 @@
         
         /* Styling Tabel Daftar Hadir */
         .table-container { margin-top: 40px; text-align: left; }
-        h2 { border-bottom: 2px solid #007bff; padding-bottom: 10px; color: #007bff; }
+        .header-tabel { display: flex; justify-content: space-between; align-items: center; border-bottom: 2px solid #007bff; padding-bottom: 10px; }
+        h2 { margin: 0; color: #007bff; }
+        
         table { width: 100%; border-collapse: collapse; margin-top: 15px; background: white; }
         th, td { padding: 12px 15px; border: 1px solid #ddd; text-align: left; }
         th { background-color: #007bff; color: white; }
         tr:nth-child(even) { background-color: #f9f9f9; }
         .empty-row { text-align: center; color: #888; font-style: italic; }
-        .badge { background-color: #28a745; color: white; padding: 5px 10px; border-radius: 4px; font-size: 12px; font-weight: bold; }
+        
+        /* Styling Tombol-Tombol */
+        .btn-danger-sm { background-color: #dc3545; color: white; border: none; padding: 5px 10px; border-radius: 4px; cursor: pointer; font-size: 12px; }
+        .btn-danger-sm:hover { background-color: #c82333; }
+        .btn-warning { background-color: #ffc107; color: #212529; border: none; padding: 8px 15px; border-radius: 4px; cursor: pointer; font-weight: bold; font-size: 14px; }
+        .btn-warning:hover { background-color: #e0a800; }
     </style>
 </head>
 <body>
@@ -32,7 +39,10 @@
     <p style="font-size: 18px; margin-top: 10px;">Total Hadir: <strong id="totalHadir">0</strong> Mahasiswa</p>
 
     <div class="table-container">
-        <h2>👥 Daftar Hadir Mahasiswa (Real-time)</h2>
+        <div class="header-tabel">
+            <h2>👥 Daftar Hadir Mahasiswa (Real-time)</h2>
+            <button class="btn-warning" onclick="hapusSemuaPresensi()">Clear Semua</button>
+        </div>
         <table>
             <thead>
                 <tr>
@@ -40,7 +50,7 @@
                     <th>NIM</th>
                     <th>Nama Lengkap</th>
                     <th>Waktu Presensi</th>
-                    <th>Status</th>
+                    <th>Aksi</th>
                 </tr>
             </thead>
             <tbody id="tabelPresensi">
@@ -62,7 +72,7 @@
         height: 250
     });
 
-    // Array lokal untuk menampung siapa saja yang sudah scan di sesi ini
+    // Array lokal penampung data mahasiswa hadir
     let listHadir = [];
 
     // 2. FUNGSI UNTUK MERENDER ULANG TABEL
@@ -70,7 +80,6 @@
         const tbody = document.getElementById('tabelPresensi');
         const totalHadirTxt = document.getElementById('totalHadir');
         
-        // Update counter total
         totalHadirTxt.innerText = listHadir.length;
 
         if (listHadir.length === 0) {
@@ -78,10 +87,8 @@
             return;
         }
 
-        // Kosongkan tabel sebelum diisi ulang
         tbody.innerHTML = "";
 
-        // Masukkan data mahasiswa ke dalam baris tabel
         listHadir.forEach((mhs, index) => {
             const row = `
                 <tr>
@@ -89,41 +96,62 @@
                     <td><strong>${mhs.nim}</strong></td>
                     <td>${mhs.nama}</td>
                     <td>${mhs.waktu}</td>
-                    <td><span class="badge">HADIR</span></td>
+                    <td>
+                        <button class="btn-danger-sm" onclick="hapusBaris(${index})">Hapus</button>
+                    </td>
                 </tr>
             `;
             tbody.innerHTML += row;
         });
     }
 
-    // 3. MENDENGARKAN SINYAL DARI HALAMAN SCAN MAHASISWA
-    // Setiap kali ada aktivitas scan sukses di tab mahasiswa, fungsi ini akan menangkapnya
+    // 3. FUNGSI MENGHAPUS SATU BARIS SPESIFIK
+    function hapusBaris(index) {
+        const mhsDihapus = listHadir[index];
+        if (confirm(`Apakah Anda yakin ingin menghapus presensi ${mhsDihapus.nama} (${mhsDihapus.nim})?`)) {
+            // Hapus data dari array berdasarkan indexnya
+            listHadir.splice(index, 1);
+            
+            // Perbarui tampilan tabel
+            perbaruiTabel();
+        }
+    }
+
+    // 4. FUNGSI MENGHAPUS SELURUH DAFTAR HADIR
+    function hapusSemuaPresensi() {
+        if (listHadir.length === 0) {
+            alert("Tabel memang sudah kosong!");
+            return;
+        }
+        
+        if (confirm("Apakah Anda yakin ingin mengosongkan seluruh daftar hadir kelas ini?")) {
+            listHadir = []; // Kosongkan array
+            perbaruiTabel(); // Perbarui tampilan tabel
+        }
+    }
+
+    // 5. MENDENGARKAN SINYAL DARI HALAMAN SCAN MAHASISWA
     window.addEventListener('storage', function(e) {
         if (e.key === 'userSession' && e.newValue) {
             const dataBaru = JSON.parse(e.newValue);
             
-            // Ambil waktu saat ini
             const sekarang = new Date();
             const jamMenitDetik = sekarang.toLocaleTimeString('id-ID');
 
-            // Cek apakah mahasiswa ini sudah ada di daftar (menghindari duplikat data)
             const sudahAda = listHadir.some(mhs => mhs.nim === dataBaru.nim);
 
             if (!sudahAda) {
-                // Tambahkan data ke daftar hadir kelas
                 listHadir.push({
                     nim: dataBaru.nim,
                     nama: dataBaru.nama,
                     waktu: jamMenitDetik
                 });
                 
-                // Refresh tampilan tabel
                 perbaruiTabel();
             }
         }
     });
 
-    // Reset list hadir di layar setiap kali halaman Dosen ini di-refresh pertama kali
     perbaruiTabel();
 </script>
 
